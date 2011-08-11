@@ -50,28 +50,43 @@ tetris.model = function(){
 
         var position = [5, (HEIGHT-1)];
 
-        var rate = 1;
+        var rate = 1000;
 
         this.drop = function() {
-            while ( position[1] > 0 ) {
-                position[1] -= rate;
-            }
+            var that = this;
+            setTimeout(function(){
+	            if ( position[1] > 0 ) {
+	                console.log(position);
+	                position[1]--;
+                    that.drop();
+	            }
+            }, rate);
         }
 
-        this.getPostion = function() {
+        this.getPosition = function() {
             return position;
         }
 
+        function move(direction, degree, test) {
+            var p = position[direction];
+
+            if ( test(p) ) {
+                position[direction] = p + degree;
+                return true;
+            }
+            return false;
+        }
+
         this.moveRight = function() {
-            if ( position[0] < (WIDTH-1) ) position[0]++;
+            return move(0, 1, function(p){ return p < (WIDTH - 1) });
         }
 
         this.moveLeft = function() {
-            if ( position[0] > 0 ) position[0]--;
+            return move(0, -1, function(p){ return p > 0 });
         }
 
         this.moveDown = function() {
-            if ( postion[0] > 0 ) position[1]--;
+            return move(1, -1, function(p){ return p > 0 });
         }
 
         this.rotate = function() {
