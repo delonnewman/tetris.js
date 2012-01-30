@@ -1,7 +1,19 @@
 <html>
 	<head>
         <title>Tetris</title>
+        <script type="text/javascript" src="http://code.jquery.com/jquery-1.7.1.min.js"></script>
         <script type="text/javascript" src="tetris.js"></script>
+		<script type="text/javascript">
+			$(document).ready(function(){
+				$("#board").renderGame();
+			});
+		</script>
     </head>
-    <body></body>
+	<body>
+		<div style="position: absolute; top: 50px; left: 50px">
+			<canvas id="board" width="500" height="500">
+				Your browser does not support HTML5 canvas.
+			</canvas>
+		</div>
+	</body>
 </html>

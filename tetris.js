@@ -4,10 +4,22 @@
 
 var tetris = { VERSION : '0.0.0' };
 
+
 tetris.model = function(){
     var EMPTY  = 0;
-    var WIDTH  = 10;
-    var HEIGHT = 20;
+	var WIDTH  = 10;
+	var HEIGHT = 20;
+
+	// drop rates for each level
+	var RATES = {
+		1 : 0.5,
+		2 : 0.75,
+		3 : 1,
+		4 : 1.25,
+		5 : 1.5,
+		6 : 1.75,
+		7 : 2
+	};
 
     // tetriminos
     var I = [[0,0,0,0],
@@ -45,14 +57,14 @@ tetris.model = function(){
              [0,7,7,0],
              [0,0,0,0]];
 
-    function Tetrimino(t) {
-        var tetrimino = t;
+    function Tetrimino(tetrimino, position) {
+		this.matrix = tetrimino;
 
-        var position = [5, (HEIGHT-1)];
+		this.getMatrix = function() {
+			return this.matrix;
+		};
 
-        var rate = 1000;
-
-        this.drop = function() {
+        this.drop = function(rate) {
             var that = this;
             setTimeout(function(){
 	            if ( position[1] > 0 ) {
@@ -92,46 +104,36 @@ tetris.model = function(){
         this.rotate = function() {
             var i = 0;
             var t = [];
-            for ( ; i < tetrimino.length; i++ ) {
+            for ( ; i < this.matrix.length; i++ ) {
                 var j = 0;
-                for ( ; j < tetrimino[0].length; j++ ) {
+                for ( ; j < this.matrix[0].length; j++ ) {
                     t[j] = t[j] || [];
-                    t[j][tetrimino[0].length - 1 - i] = tetrimino[i][j];
+                    t[j][this.matrix[0].length - 1 - i] = this.matrix[i][j];
                 }
             }
-            tetrimino = t;
+            this.matrix = t;
         }
 
         this.display = function() {
             var i = 0;
-            for ( ; i < tetrimino.length; i++ ) {
-                console.log(tetrimino[i]);
+            for ( ; i < this.matrix.length; i++ ) {
+                console.log(this.matrix[i]);
             }
         }
+
+		this.map = function(fn) {
+			var i = 0;
+			for ( ; this.matrix.length; i++ ) {
+				fn.apply(this, this.matrix[i], i);
+			}
+		};
 
         return this;
     }
 
-
-    function Board() {
-
-        var board = function (w, h) {
-            var b = [];
-            var i = 0;
-            for ( ; i < w; i++ ) {
-                b[i] = [];
-                var j = 0;
-                for ( ; j < h; j++ ) {
-                    b[i][j] = EMPTY 
-                }
-            }
-            return b;
-        }(WIDTH, HEIGHT);
-    }
-
     return {
         Tetrimino:Tetrimino,
-        Board:Board,
+		RATES:RATES,
         I:I,
         J:J,
         T:T,
@@ -142,9 +144,73 @@ tetris.model = function(){
     }
 }();
 
-tetris.test = function(){
-    function testSuite() {
+tetris.view = function ( $ ) {
+	var SQUARE_PX = 30;
+	var COLORS    = {
+		1 : "#ff0000",
+	};
 
-    }
-    return { suite:testSuite }
-}();
+	function Game(canvas, context, level) {
+		this.canvas  = canvas;
+		this.context = context;
+		this.level   = level || 1;
+
+		this.currentTetrimino = new tetris.model.Tetrimino(tetris.model.Z, [30, 30]);
+
+		this.renderSquare = function(x, y, color) {
+			color = color || "#ff0000";
+
+			var fill = this.context.fillStyle;
+			this.context.fillStyle = color;
+			this.context.fillRect(x, y, SQUARE_PX, SQUARE_PX);
+			this.context.fillStyle = fill;
+		}
+
+		this.renderTetrimino = function(t) {
+			var pos = t.getPosition();
+			var matrix = t.getMatrix();
+			var i = 0;
+			var vertical = pos[1];
+			for ( ; i < matrix.length; i++ ) {
+				var j = 0;
+				var horizontal = pos[0];
+				var y = i > 0 ? vertical += (SQUARE_PX + 2) : vertical;
+				for ( ; j < matrix[i].length; j++ ) {
+					var x = j > 0 ? horizontal += (SQUARE_PX + 2) : horizontal;
+					if ( matrix[i][j] != 0 ) {
+						this.renderSquare(x, y);
+					}
+				}
+			}
+		};
+
+		this.start = function() {
+			var canvas  = this.canvas;
+			var context = this.context;
+
+			context.fillStyle = "#000000";
+			context.fillRect(0, 0, canvas.width, canvas.height);
+
+			this.renderTetrimino(this.currentTetrimino);
+		};
+
+		this.pause = function() { };
+
+		this.end = function() { };
+	}
+
+	$.fn.renderGame = function(opts) {
+		if (!this[0]) {
+			throw("could not find canvas");
+		}
+
+		opts = opts || {};
+		var level = opts.level;
+
+		var canvas  = this[0];
+		var context = canvas.getContext("2d");
+		var game    = new Game(canvas, context, level);
+		game.start();
+	};
+
+}( jQuery );
