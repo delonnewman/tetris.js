@@ -155,7 +155,7 @@ tetris.view = function ( $ ) {
 		this.context = context;
 		this.level   = level || 1;
 
-		this.currentTetrimino = new tetris.model.Tetrimino(tetris.model.Z, [30, 30]);
+		this.currentTetrimino = new tetris.model.Tetrimino(tetris.model.L, [canvas.width / 2, 30]);
 
 		this.renderSquare = function(x, y, color) {
 			color = color || "#ff0000";
