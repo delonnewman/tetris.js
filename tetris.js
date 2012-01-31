@@ -9,7 +9,7 @@ tetris.config = {
     SQUARE_PX : 30,
 
     COLORS : {
-		'I' : "#ff0000",
+        'I' : "#ff0000",
         'J' : "#00ff00",
         'L' : "#0000ff",
         'O' : "#ffff00",
@@ -27,7 +27,7 @@ tetris.config = {
         5 : 0.6,
         6 : 0.4,
         7 : 0.2
-	},
+    },
 
     WIDTH  : 500,
     HEIGHT : 500
