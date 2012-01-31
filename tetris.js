@@ -50,53 +50,77 @@ tetris.model = function(){
 	};
 
     function Tetrimino(type, position) {
-		this.type     = type;
-        this.matrix   = MATRICES[type];
-        this.position = position;
-        this.paused   = false;
+		this.type  = type;
+		this._     = {};
 
-        this.pause = function() {
-            if ( this.paused && this.rate ) this.drop(this.rate);
-            this.paused = !this.paused;
-        };
+		// private scope
+		var _  = this._;
+        _.position = position;
+		_.paused   = false;
+		_.state    = 'init';
+        _.matrix   = MATRICES[type];
+		_.rate     = undefined;
+
 
         this.isPaused = function() {
-            return this.paused;
+            return _.paused;
         };
 
-        this.getMatrix = function() {
-            return this.matrix;
+		this.pause = function() {
+			var _ = this._;
+
+            if ( _.paused && _.rate ) this.drop(_.rate);
+            _.paused = !_.paused;
+        };
+
+        this.matrix = function() {
+            return this._.matrix;
         };
 
         this.drop = function(rate) {
-            this.rate = rate;
+			var _   = this._;
+            _.rate  = rate;
+			_.state = 'dropping';
 
             var that = this;
             setTimeout(function(){
-                if ( !that.isPaused() && that.position[1] < HEIGHT ) {
-                    that.position[1]++;
+                if ( !that.isPaused() && _.position[1] < HEIGHT ) {
+                    _.position[1]++;
                     that.drop(rate);
                 }
+				else {
+					_.state = 'fallen';
+				}
+
+				if ( _.state == 'fallen' ) that.fallen(); // call trigger
             }, rate);
-        }
+        };
 
-        this.getPosition = function() {
-            return this.position;
-        }
+		this.fallen = function(fn) {
+			if ( fn ) { this._.onFallen = fn }
+			else      { this._.onFallen.call(this, this) }
+		};
 
-		this.setPosition = function(val) {
-			this.position = val;
-		}
+		this.isFallen = function() { return this._.state == 'fallen' };
+
+		this.isDropping = function() {
+			return this._.state == 'dropping';
+		};
+
+        this.position = function(val) {
+			if ( val ) { this._.position = val  }
+			else       { return this._.position }
+        };
 
         this.move = function(direction, degree, test) {
-            var p = this.position[direction];
+            var p = this._.position[direction];
 
             if ( test(p) ) {
-                this.position[direction] = p + degree;
+                this._.position[direction] = p + degree;
                 return true;
             }
             return false;
-        }
+        };
 
         this.width = function() {
 
@@ -105,38 +129,39 @@ tetris.model = function(){
         this.moveRight = function() {
             console.log("move right");
             return this.move(0, 5, function(p){ return p < (WIDTH - 1) });
-        }
+        };
 
         this.moveLeft = function() {
             console.log("move left");
             return this.move(0, -5, function(p){ return p > 0 });
-        }
+        };
 
         this.moveDown = function() {
             console.log("move down");
-            return this.move(1, 5, function(p){ return p > 0 });
-        }
+            return this.move(1, 5, function(p){ return p < HEIGHT });
+        };
 
         this.rotate = function() {
             console.log("rotate");
+			var _ = this._;
             var i = 0;
             var t = [];
-            for ( ; i < this.matrix.length; i++ ) {
+            for ( ; i < _.matrix.length; i++ ) {
                 var j = 0;
-                for ( ; j < this.matrix[0].length; j++ ) {
+                for ( ; j < _.matrix[0].length; j++ ) {
                     t[j] = t[j] || [];
-                    t[j][this.matrix[0].length - 1 - i] = this.matrix[i][j];
+                    t[j][_.matrix[0].length - 1 - i] = _.matrix[i][j];
                 }
             }
-            this.matrix = t;
-        }
+            _.matrix = t;
+        };
 
         this.display = function() {
             var i = 0;
-            for ( ; i < this.matrix.length; i++ ) {
-                console.log(this.matrix[i]);
+            for ( ; i < this._.matrix.length; i++ ) {
+                console.log(this._.matrix[i]);
             }
-        }
+        };
     }
 
 	/*
@@ -165,10 +190,23 @@ tetris.model = function(){
 	/*
 	 *	The Grid
 	 */
-	function Grid(width, height, squareSize) {
-		this.squareSize = squareSize || 30;
-		this.width      = this.squareSize * width;
-		this.height     = this.squareSize * height;
+	function Grid(width, height) {
+		this.width  = width;
+		this.height = height;
+		this.grid   = [];
+
+		/*
+		 *	t (Tetrimino), position ([x, y]) corresponding to Grid position
+		 */
+		this.storeTetrimino = function(t) {
+			var matrix = t.matrix();
+			var pos    = t.position();
+
+			var i = 0;
+			for ( ; i < this.width; i++ ) {
+				
+			}
+		};
 	}
 
     return {
@@ -208,12 +246,30 @@ tetris.view = function ( $ ) {
 		this.refresh = 33;
 
 		this.grid          = new tetris.model.Grid(20, 20);
-		this.canvas.width  = this.grid.width;
-		this.canvas.height = this.grid.height;
+		this.canvas.width  = this.grid.width  * SQUARE_PX;
+		this.canvas.height = this.grid.height * SQUARE_PX;
 
 		this.queue = new tetris.model.Queue();
 		this.currentTetrimino = this.queue.dequeue();
-		this.currentTetrimino.setPosition([canvas.width / 2, 0]);
+		this.currentTetrimino.position([canvas.width / 2, 0]);
+
+		this.onFallen = function f(t) {
+			console.log(this);
+			this.grid.storeTetrimino(t);
+			this.currentTetrimino = this.queue.dequeue();
+			this.currentTetrimino.position([canvas.width / 2, 0]);
+			this.currentTetrimino.drop(RATES[this.level]);
+
+			var that = this;
+			this.currentTetrimino.fallen(function(t){
+				f.call(that, t);
+			});
+		};
+
+		var that = this;
+		this.currentTetrimino.fallen(function(t){
+			that.onFallen.call(that, t);	
+		});
 
         this.renderSquare = function(x, y, color) {
             color = color || "#ff0000";
@@ -225,8 +281,9 @@ tetris.view = function ( $ ) {
         }
 
         this.renderTetrimino = function(t) {
-            var pos = t.getPosition();
-            var matrix = t.getMatrix();
+            var pos    = t.position();
+            var matrix = t.matrix();
+
             var i = 0;
             var vertical = pos[1];
             for ( ; i < matrix.length; i++ ) {
@@ -235,9 +292,7 @@ tetris.view = function ( $ ) {
                 var y = i > 0 ? vertical += (SQUARE_PX + 2) : vertical;
                 for ( ; j < matrix[i].length; j++ ) {
                     var x = j > 0 ? horizontal += (SQUARE_PX + 2) : horizontal;
-                    if ( matrix[i][j] != 0 ) {
-                        this.renderSquare(x, y, COLORS[t.type]);
-                    }
+                    if ( matrix[i][j] != 0 ) this.renderSquare(x, y, COLORS[t.type]);
                 }
             }
         };
@@ -278,8 +333,9 @@ tetris.controller = function( $ ){
         var canvas  = this[0];
         var context = canvas.getContext("2d");
         var game    = new tetris.view.Game(canvas, context, level);
-        game.render();
+		game.render();
 
+		var rotated = 0;
         $('*').keydown(function(e){
             switch(e.keyCode) {
                 case 37: // left arrow
@@ -288,8 +344,14 @@ tetris.controller = function( $ ){
                 case 39: // right arrow
                     game.currentTetrimino.moveRight();
                     break;
-                case 38: // up arrrow
-                    game.currentTetrimino.rotate();
+				case 38: // up arrrow
+					console.log(rotated);
+					if      ( rotated == 1 ) rotated = 0;
+					else if ( rotated >  0 );
+					else {
+						game.currentTetrimino.rotate();
+						rotated++;
+					}
                     break;
                 case 40: // down arrrow
                     game.currentTetrimino.moveDown();
